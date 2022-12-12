@@ -3,7 +3,7 @@ hyperskill_project:
   ide_files: https://stepik.org/media/attachments/lesson/531252/additional_files.json
   is_template_based: false
   use_ide: true
-update_date: "Wed, 30 Nov 2022 16:21:54 UTC"
+update_date: "Thu, 01 Dec 2022 07:18:27 UTC"
 stages:
 - id: 922
   step: 13174
@@ -19,7 +19,7 @@ stages:
   is_completed: true
 - id: 926
   step: 13178
-  is_completed: false
+  is_completed: true
 topics:
   0:
   - title: Units of information
@@ -136,6 +136,8 @@ topics:
   4:
   - title: Computer programming
     theory_id: 8739
+  - title: Paradigms
+    theory_id: 15860
   - title: Introduction to OOP
     theory_id: 3614
   - title: Declaring classes

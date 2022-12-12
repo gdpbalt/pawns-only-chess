@@ -29,7 +29,7 @@ class GameOption {
 
 enum class GameNotice(val msg: String) {
     GAME_CAPTION("Pawns-Only Chess"),
-    ASL_FIRST_PLAYER_NAME("First Player's name:"),
+    ASK_FIRST_PLAYER_NAME("First Player's name:"),
     ASK_SECOND_PLAYER_NAME("Second Player's name:"),
     ASK_PLAYER_TURN("${GameOption.NOTICE_REGEX}'s turn:"),
     BYE_NOTICE("Bye!"),
@@ -54,9 +54,14 @@ class Game {
         firstPlayer = askPlayerName(1)
         secondPlayer = askPlayerName(2)
         boardInitialise()
+        showBoard()
         while (true) {
-            showBoard()
             previsionCommand = currentCommand
+            if (isCheckStalemate(currentPlayer)) {
+                showDrawMessage()
+                showByeMessage()
+                return
+            }
             try {
                 askPlayerTurn(currentPlayer)
                 moveFigure(currentCommand)
@@ -66,8 +71,57 @@ class Game {
             } catch (ex: EnPassantException) {
                 moveEnPassant(currentCommand)
             }
+            showBoard()
+            if (isReachFinalRank(currentPlayer, currentCommand)
+                || isOpponentPawnsIsEmpty(currentPlayer)
+            ) {
+                showWinMessage(currentPlayer)
+                showByeMessage()
+                return
+            }
             currentPlayer = if (currentPlayer != 1) 1 else 2
         }
+    }
+
+    private fun isCheckStalemate(player: Int): Boolean {
+        val letter = if (player == 1) GameOption.LETTER_FIRST_PLAYER else GameOption.LETTER_SECOND_PLAYER
+        val oppositeLetter = if (player == 1) GameOption.LETTER_SECOND_PLAYER else GameOption.LETTER_FIRST_PLAYER
+        val diff = if (player == 1) +1 else -1
+        for (row in board.indices) {
+            for (col in board[row].indices) {
+                val content = board[row][col]
+                if (content != letter) {
+                    continue
+                }
+                val newRow = row + diff
+                if (newRow in 0..board.lastIndex && board[newRow][col] == GameOption.SPACE_SYMBOL) {
+                    return false
+                }
+                for (newCol in listOf(col + 1, col - 1)) {
+                    if (newRow in 0..board.lastIndex
+                        && newCol in 0..board[0].lastIndex
+                        && board [newRow][newCol] == oppositeLetter
+                    ) {
+                        return false
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    private fun isReachFinalRank(player: Int, command: String): Boolean {
+        val number = gamePlay.getPosition(command[2], command[3]).second
+        return if (player == 1) {
+            number == (GameOption.NUMBER_OF_RANKS - 1)
+        } else {
+            number == 0
+        }
+    }
+
+    private fun isOpponentPawnsIsEmpty(player: Int): Boolean {
+        val oppositePlayer = if (player == 1) 2 else 1
+        return gamePlay.getCountOfPawns(board, oppositePlayer) == 0
     }
 
     private fun askPlayerTurn(player: Int) {
@@ -116,10 +170,22 @@ class Game {
         gamePlay.setContentAtPosition(board, previsionCommand[2], previsionCommand[3], GameOption.SPACE_SYMBOL)
     }
 
+    private fun showWinMessage(player: Int) {
+        val color = (if (player == 1) GameOption.COLOR_FIRST_PLAYER else GameOption.COLOR_SECOND_PLAYER)
+        val msg = GameNotice.PLAYER_WIN.msg.replace(
+            GameOption.NOTICE_REGEX,
+            color.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() })
+        writeln(msg)
+    }
+
+    private fun showDrawMessage() {
+        writeln(GameNotice.PLAYER_DRAW.msg)
+    }
+
     private fun showByeMessage() = writeln(GameNotice.BYE_NOTICE.msg)
 
     private fun askPlayerName(player: Int): String {
-        val question = if (player == 1) GameNotice.ASL_FIRST_PLAYER_NAME else GameNotice.ASK_SECOND_PLAYER_NAME
+        val question = if (player == 1) GameNotice.ASK_FIRST_PLAYER_NAME else GameNotice.ASK_SECOND_PLAYER_NAME
         writeln(question.msg)
         return readln()
     }
@@ -265,7 +331,20 @@ class GamePlay {
         return getContentAtPosition(board, x, y)
     }
 
-    private fun getContentAtPosition(board: Array<CharArray>, x: Int, y: Int): Char {
+    fun getPosition(letter: Char, number: Char): Pair<Int, Int> {
+        return Pair(letter - 'a', number.digitToInt() - 1)
+    }
+
+    fun getCountOfPawns(board: Array<CharArray>, player: Int): Int {
+        val symbol = if (player == 1) GameOption.LETTER_FIRST_PLAYER else GameOption.LETTER_SECOND_PLAYER
+        var count = 0
+        for (i in board.indices) {
+            count += board[i].count { it == symbol }
+        }
+        return count
+    }
+
+    fun getContentAtPosition(board: Array<CharArray>, x: Int, y: Int): Char {
         return board[y][x]
     }
 
@@ -285,10 +364,6 @@ class GamePlay {
         } else {
             numberSource - numberDestination
         }
-    }
-
-    private fun getPosition(letter: Char, number: Char): Pair<Int, Int> {
-        return Pair(letter - 'a', number.digitToInt() - 1)
     }
 
 }
